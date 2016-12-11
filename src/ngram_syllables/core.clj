@@ -36,26 +36,29 @@
 ;; Syllables
 
 (defn candidates
-  ([word]
-   (candidates word []))
-  ([word syllables]
-   (cond (empty? word)      syllables
-         (empty? syllables) (recur (subs word 1) (list (vector (subs word 0 1))))
-         :else              (recur (subs word 1)
-                                   ;; TODO: prune off syllables not in corpus
-                                   (let [c (subs word 0 1)
-                                         add    #(conj % c)
-                                         append #(assoc % (dec (count %)) (str (last %) c))]
-                                     (mapcat #(vector (add %) (append %)) syllables))))))
+  ([model word]
+   (candidates model word []))
+  ([model word syllables]
+   ;; Filter out syllabifications that contain unknown syllables
+   (let [known? (fn [x] (contains? (get-counts model 1) x))]
+     (cond (empty? word)      (filter #(or (= (count %) 1) (known? (last %))) syllables)
+           (empty? syllables) (recur model (subs word 1) (list (vector (subs word 0 1))))
+           :else              (recur model (subs word 1)
+                                     (let [c (subs word 0 1)
+                                           add    #(conj % c)
+                                           append #(assoc % (dec (count %)) (str (last %) c))]
+                                       (concat
+                                        (map add (filter #(known? (last %)) syllables))
+                                        (map append syllables))))))))
 
 (defn unigram-predict
   [model word]
-  (->> (candidates word)
+  (->> (candidates model word)
        (apply max-key (fn [x] (reduce * (map #(ngram-probability model %) x))))))
 
 (defn bigram-predict
   [model word]
-  (->> (candidates word)
+  (->> (candidates model word)
        (apply max-key (fn [x]
                         (->> (cons start-sentinel (conj x end-sentinel))
                              (partition 2 1)
