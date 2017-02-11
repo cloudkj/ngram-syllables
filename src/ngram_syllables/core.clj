@@ -1,4 +1,5 @@
-(ns ngram-syllables.core)
+(ns ngram-syllables.core
+  (:require [clojure.string :refer [join]]))
 
 ;; N-gram
 
@@ -17,6 +18,12 @@
   [n corpus]
   (reduce (fn [m i] (assoc m i (ngram-counts i corpus))) {} (range 1 (inc n))))
 
+(defn ngram-model-stats
+  [model]
+  (->> (sort (keys model))
+       (map #(str (count (get model %)) " " % "-gram sequences"))
+       (join \newline)))
+
 (defn get-counts
   [model n]
   (get model n))
@@ -27,6 +34,7 @@
    (ngram-probability model [] t))
   ([model s t]
    (let [n (inc (count s))
+         ;; TODO: add smoothing
          numer (get-in (get-counts model n) (conj (vec s) t) 0)
          denom (if (empty? s)
                  (get (get-counts model 1) start-sentinel 0)
@@ -51,18 +59,30 @@
                                         (map add (filter #(known? (last %)) syllables))
                                         (map append syllables))))))))
 
-(defn unigram-predict
-  [model word]
-  (->> (candidates model word)
-       (apply max-key (fn [x] (reduce * (map #(ngram-probability model %) x))))))
+(defn ngram-predict-candidate
+  [n model candidate]
+  (if (= n 1)
+    ;; TODO: use log space for probabilities
+    (reduce * (map #(ngram-probability model %) candidate))
+    (->> (cons start-sentinel (conj candidate end-sentinel))
+         (partition n 1)
+         (map #(ngram-probability model (butlast %) (last %)))
+         ;; TODO: use log space for probabilities
+         (#(if (empty? %) 0 (reduce * %))))))
 
-(defn bigram-predict
-  [model word]
-  (->> (candidates model word)
-       (apply max-key (fn [x]
-                        (->> (cons start-sentinel (conj x end-sentinel))
-                             (partition 2 1)
-                             (map #(ngram-probability model (butlast %) (last %)))
-                             (reduce *))))))
+(defn ngram-predict
+  "Returns a prediction using n-grams."
+  [n model word]
+  (apply max-key #(ngram-predict-candidate n model %) (candidates model word)))
 
-;; TODO: add generic prediction function
+(defn predict
+  "Returns a prediction based on a weighted interpolation of predictions using
+  1-grams, 2-grams, ..., and n-grams."
+  [weights model word]
+  (let [n (count weights)]
+    (->> (candidates model word)
+         (apply max-key (fn [c]
+                          (->> (map #(* (ngram-predict-candidate %1 model c) %2)
+                                    (range 1 (inc n))
+                                    weights)
+                               (reduce +)))))))
