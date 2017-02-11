@@ -5,4 +5,5 @@
                  :url "http://opensource.org/licenses/MIT"}
   :plugins      [[lein-gorilla "0.3.6"]]
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/data.csv "0.1.3"]])
+                 [org.clojure/data.csv "0.1.3"]
+                 [org.clojure/tools.cli "0.3.5"]])
