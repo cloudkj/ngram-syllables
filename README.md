@@ -26,6 +26,8 @@ Options:
 
 ## Example
 
+Generate syllable boundaries for some words not in the training corpus.
+
 ```
 % ./train.sh
 Training model with n = 3
@@ -33,8 +35,27 @@ Training model with n = 3
 17489 2-gram sequences
 7434 3-gram sequences
 Output: target/model.edn
-% echo "individualistically" | ./predict.sh --delim · 0.1 0.1 0.8
-in·di·vid·u·al·is·ti·cal·ly
+% head -n 20 resources/pokemon_names.txt | ./predict.sh --delim · 0.1 0.1 0.8
+bulb·a·saur
+i·vy·saur
+ven·u·saur
+char·man·der
+char·mel·e·on
+char·i·zard
+squirt·le
+war·tor·tle
+blast·o·ise
+ca·ter·pie
+met·a·pod
+but·ter·free
+weed·le
+ka·ku·na
+bee·drill
+pid·gey
+pid·ge·ot·to
+pid·ge·ot
+rat·ta·ta
+ra·ti·cate
 ```
 
 ## License
